@@ -1,4 +1,5 @@
-# 📈 Portfolio Analysis of NVDA, CMCSA, and EA Stocks
+# 📈 Portfolio Management - Financial Modelling
+### Stocks: NVDA, CMCSA, and EA Stocks
 
 **Author:** Paul Muriithi  
 **Date:** 2022-06-18  
@@ -31,7 +32,7 @@ The stocks show diverse trajectories:
 📊 *[See Price Trends]*  
 ![NVDA Price Plot](plots/stock_prices.png)
 
----
+
 
 ## 2️⃣ Daily Returns Behavior
 
@@ -45,7 +46,7 @@ Key insights:
 📊 *[See Return Plots]*  
 ![Return Plots](plots/daily_returns.png)
 
----
+
 
 ## 3️⃣ Distribution of Returns
 
@@ -76,7 +77,7 @@ Interpretation:
 - 🛡️ CMCSA: Least risky; returns are stable, but modest.
 - ⚖️ EA: Sits in between — a compromise between risk and reward.
 
----
+
 
 ## 5️⃣ Are Returns Statistically Significant?
 
@@ -85,7 +86,7 @@ A t-test on daily returns against zero mean showed that:
 - **None of the stocks had significantly non-zero daily returns** at the 99% level.
 - This supports the **Efficient Market Hypothesis (EMH)**, suggesting stock prices incorporate all available information.
 
----
+
 
 ## 6️⃣ How Do These Stocks Compare?
 
@@ -96,7 +97,7 @@ Pairwise tests of means suggest:
 
 Conclusion: Risk preferences, not average returns, define their uniqueness.
 
----
+
 
 ## 7️⃣ Correlation and Diversification
 
@@ -108,7 +109,7 @@ All stocks are **moderately positively correlated**, meaning:
 📊 *[See Correlation Heatmap]*  
 ![Correlation Matrix](plots/correlation_matrix.png)
 
----
+
 
 ## 8️⃣ Optimal Portfolio Combinations
 
@@ -124,7 +125,7 @@ The best option depends on investor appetite:
 - Risk-averse? → CMCSA + EA  
 - Growth-focused? → NVDA + EA
 
----
+
 
 ## 9️⃣ Impact of Global Events
 
@@ -141,7 +142,7 @@ Findings:
 
 📉 Interpretation: EA may serve as a **defensive stock** during crises.
 
----
+
 
 ## 🔚 Conclusion
 
@@ -154,5 +155,4 @@ This analysis supports the idea that:
 
 ---
 
-## 📁 Project Structure
 
