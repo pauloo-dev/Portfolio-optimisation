@@ -1,0 +1,630 @@
+---
+title: "Portfolio Management on NVDA, CMCSA and EA stocks"
+author: "Paul Muriithi"
+output:
+  pdf_document:
+    latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message= FALSE, warning = FALSE, tidy.opts = list(width.cutoff = 90), tidy = TRUE )
+
+rm(list=ls(all=TRUE))
+``` 
+
+
+
+```{r}
+
+# loading required libraries
+library(tidyquant)
+library(tidyverse)
+library(broom)
+library(knitr)
+library(kableExtra) 
+library(ggplot2)
+library(plotly)
+library(gridExtra)
+```
+
+# 1. Importing stocks data
+
+
+```{r data}
+
+# Fetch selected stocks using Tiingo
+stocks <- tq_get(c("NVDA", "CMCSA", "EA"), 
+                 get = "stock.prices", 
+                 from = "2000-01-01", 
+                 to = "2022-06-18") %>%
+  select(symbol, date, adjusted)
+
+
+# Display first 6 rows in a table
+head(stocks, n = 6) %>%
+  kable(caption = "Selected stocks data")
+```
+
+# 2. The Analysis
+
+## 2.1. Plot prices over time.
+
+
+```{r timeSeriesplots,fig.cap="Time series of stocks prices"}
+# time series plot for the three stocks
+NVDA = stocks[stocks$symbol=="NVDA",]
+CMCSA = stocks[stocks$symbol=="CMCSA",]
+EA = stocks[stocks$symbol=="EA",]
+plot1 <- ggplot(NVDA,aes(x=date,y=adjusted))+
+    geom_line(color="darkblue")+labs(title="NVDA prices")
+plot2 <- ggplot(CMCSA,aes(x=date,y=adjusted))+
+     geom_line(color="orange")+labs(title="CMCSA prices ")
+plot3 <- ggplot(EA,aes(x=date,y=adjusted))+
+    geom_line(color="tomato")+labs(title="EA prices")
+grid.arrange(plot1,plot2,plot3,ncol=3)
+```
+
+NVDA: The stock prices were very low and stationary from 2000 to around 2016 after when they  increased rapidly with cyclic patterns. The prices were at their maximum in 2021, but could not maintain that price where its followed by a decreasing trend.
+
+CMCSA: The stock prices were low from 2000 to 2010. Since 2010, the prices have been on sharp increasing trend with seasonal properties. This stock reaches its peak in 2021, falling immediately thereafter.
+
+EA: EA stock prices started in 2000 with an upward trend where they rose for 5 yrs to 2005, then started to depreciate. At around 2008, EA stock prices fell sharply to where they were in 2000 and remained so with some seasonal rise and falls up to mid-2012. The prices then skyrocketed, reaching their peak in 2018 where they immediately falls again in 2019 and 2020, but rises in 2021.
+
+## 2.2. 
+
+Given the formula:
+
+$$
+r_t = 100*\ln\Big(\frac{P_t}{P_{t-1}}\Big) 
+$$
+
+```{r timeSeriesReturnsplots,fig.cap="Time series of percentage returns",message=FALSE}
+# percentage returns for each stock
+stocks <- stocks %>%
+  group_by(symbol) %>%
+  mutate(per_returns = 100 * (log(adjusted) - log(lag(adjusted)))) %>%
+  ungroup() %>%
+  drop_na()
+
+# subset percentage returns for each stock
+NVDA_RT=stocks[stocks$symbol=="NVDA",]
+CMCSA_RT=stocks[stocks$symbol=="CMCSA",]
+EA_RT=stocks[stocks$symbol=="EA",]
+# rendering plots fro the percentage returns
+plt1 <- ggplot(NVDA_RT, aes(x=date, y=per_returns)) +
+  geom_line(color="darkblue") + labs(title = "NVDA Daily Percentage Returns")
+
+plt2 <-ggplot(CMCSA_RT,aes(x=date,y=per_returns))+geom_line(color="orange")+labs(title="CMCSA Daily Percentage Returns")
+plt3 <-ggplot(EA_RT,aes(x=date,y=per_returns))+geom_line(color="tomato")+labs(title="EA Daily Percentage Returns")
+plts<-grid.arrange(plt1,plt2,plt3,ncol=2)
+plts
+```
+
+
+
+## 2.3
+
+To find the number of bins, consider the following formula:
+
+$$bins = (Max-Min)/h $$
+
+where
+
+$$h=2×IQR×n^{−1/3}$$
+
+```{r Returns Histogram, fig.cap="Histograms of percentage returns"}
+#histogram for each stock return series.
+hist1 <-ggplot(NVDA_RT,aes(x=per_returns))+geom_histogram(bins = 151,fill = "darkblue")+labs(title="NVDA returns Histogram")
+hist2 <-ggplot(CMCSA_RT,aes(x=per_returns))+geom_histogram(bins = 96,fill = "orange")+labs(title="CMCSA returns Histogram")
+hist3 <-ggplot(EA_RT,aes(x=per_returns))+geom_histogram(bins = 91,fill = "tomato")+labs(title="EA returns Histogram")
+hists<-grid.arrange(hist1,hist2,hist3,ncol=2)
+hists
+```
+
+The three histograms indicates that the returns of the three stocks(NDVA, CMCSA, and EA) are normally distributed with sharp apex indicating highly positive kurtosis, hence leptokurtic. In all three stocks, most of the stocks returns cluster around zero, since more returns are above the normal distribution and less values distributed in the tail. 
+
+## 2.4
+
+```{r summaryTable, fig.cap="summary statistics for NDVA, CMCSA, and EA stocks"}
+
+
+# Summary for adjusted prices
+tab1 <- stocks %>%
+  group_by(symbol) %>%
+  summarize(
+    symbol = first(symbol),
+    type = "adjusted",
+    mean = mean(adjusted),
+    median = median(adjusted),
+    variance = var(adjusted),
+    sd = sd(adjusted),
+    skewness = skewness(adjusted),
+    kurtosis = kurtosis(adjusted),
+    .groups = "drop"
+  )
+
+tab2 <- stocks %>%
+  group_by(symbol) %>%
+  summarize(
+    symbol = first(symbol),
+    type = "returns",
+    mean = mean(per_returns),
+    median = median(per_returns),
+    variance = var(per_returns),
+    sd = sd(per_returns),
+    skewness = skewness(per_returns),
+    kurtosis = kurtosis(per_returns),
+    .groups = "drop"
+  )
+
+# Combine and display
+summary <- bind_rows(tab1, tab2) %>%
+  select(symbol, type, mean, median, variance, sd, skewness, kurtosis)
+
+kable(summary, caption = "Table 2: Summary statistics table of returns", digits = 7)
+```
+
+The average stock returns do not appear to be significantly different from zero(0.0204, 0.0289, and 0.0913) since more returns are above the normal distribution and lies between 2 and 4 standard deviations. NVDA stock returns the biggest return of 0.0913, with an almost 10% return on investment, but experiences the most variations. 
+
+
+## 2.5
+
+Significant test for all stocks (t-test)
+
+* Null Hypothesis: Average returns equals zero
+
+* Alternative Hypothesis: Average returns not equals zero
+
+$$H_{0}:\mu =0\\$$
+$$H_{1}:\mu\neq0\\$$
+$$\alpha=0.01\\$$
+$$t=(\frac{\hat{\mu} \sqrt{N}}{\sigma}) t_{N-1}$$
+Significant test for NVDA (t-test)
+
+```{r significant Tests,fig.caption="t-test for NVDA, are average returns significantly different from zero?"}
+#select returns for NVDA stock
+nvda_ret <- subset(stocks,stocks$symbol=="NVDA")%>%select(per_returns)
+#t-test for NVDA stock
+nvda_test=t.test(nvda_ret$per_returns,mu=0,conf.level=0.99)
+res <- data.frame(nvda_test$statistic,nvda_test$p.value)
+names(res)<-c("t","p-value")
+res
+```
+
+
+$$t=1.837498\\$$
+
+$$p-value=0.0661 > \ 0.05 \\$$
+
+
+Significant test for CMCSA
+
+```{r}
+# returns for CMCSA stock
+cmcsa_ret <- subset(stocks,stocks$symbol=="CMCSA")%>%select(per_returns)
+#t-test for CMCSA stock
+cmcsa_test=t.test(cmcsa_ret$per_returns,mu=0,conf.level=0.99)
+cmcsa_res <- data.frame(cmcsa_test$statistic,cmcsa_test$p.value)
+names(cmcsa_res)<-c("t","p-value")
+cmcsa_res
+```
+
+$$t=0.7872869\\$$
+
+$$p-value=0.4311469 > \ 0.05\\$$
+
+
+Significant Test (t-test) for EA
+
+
+```{r}
+ea_ret <- subset(stocks,stocks$symbol=="EA")%>%select(per_returns)#select returns for EA stock
+#t-test for EA stock
+ea_test=t.test(ea_ret$per_returns,mu=0,conf.level=0.99)
+ea_res <- data.frame(ea_test$statistic,ea_test$p.value)
+names(ea_res)<-c("t","p-value")
+ea_res
+```
+$$t=0.8405$$
+
+$$p-value=0.4007 > \ 0.05\\$$
+
+
+```{r}
+# t critical value
+qt(0.01, 5648, lower.tail = F)
+```
+
+$$t_{critical}=2.327$$
+
+- summary of the three tests
+
+```{r}
+tests <- data.frame(
+  Type = c("NVDA", "CMCSA", "EA"),
+  T_stat = c(nvda_test$statistic, cmcsa_test$statistic, ea_test$statistic),
+  T_crit = rep(qt(0.01, df=nrow(nvda_ret)-1, lower.tail=FALSE), 3),
+  P_value = c(nvda_test$p.value, cmcsa_test$p.value, ea_test$p.value)
+)
+tests
+```
+
+The t-values obtained for all the three stocks are less than the critical value(2.327), therefore we fail to reject the null hypothesis and conclude that the stocks returns are not significantly different from 0 at 1% significance level. The p-values being higher than 0.01 suggest that we do not have sufficient evidence to say that the average returns are different from 0.
+
+# 2.6. Significance differences of the average returns.
+
+Testing for equality of variances
+$$Let \ Variance \ NVDA\ = \ \sigma^2_{N} \\$$
+$$Let \ variance \ CMCSA \ = \ \sigma^2_{C} \\$$
+$$Let \ variance \ EA \ = \ \sigma^2_{E} \\$$
+* **1. NVDA and CMCSA**
+
+$$H_{0}: \sigma^2_{N}=\sigma^2_{C} \\$$
+
+$$H_{1}: \sigma^2_{N}\neq\sigma^2_{C} \\$$
+$$\alpha=0.01 \ \  \frac{\alpha}{2}=0.005 \\$$
+The test statistic 
+$$F=\Big(\frac{\hat{\sigma}^2_{N}}{\hat{\sigma}^2_{C}}\Big)\\$$
+$$F=\frac{14.275}{4.187}=3.409\\$$
+$$F_{c}=F_{N_{G}-1,N_{C}-1}=F_{5649-1,5649-1} \\$$
+F critical can be obtained using r as follows:
+```{r}
+qf(p=.005, df1=5649-1, df2=5649-1, lower.tail=FALSE)
+```
+
+$$F_{c}=1.070963 \\$$
+$$F > \ F_{c} \\$$
+
+Reject the null hypothesis. Therefore there the variances of NVDA and CMCSA stocks returns  are significantly different from each other. T-test assuming unequal variances is appropriate in this case.
+
+* **2. NVDA and EA**
+
+$$H_{0}: \sigma^2_{N}=\sigma^2_{E} \\$$
+$$H_{1}: \sigma^2_{N}\neq\sigma^2_{E} \\$$
+$$\alpha=0.01 \ \ then \  \frac{\alpha}{2}=0.005 \\$$
+
+$$F=\Big(\frac{\hat{\sigma}^2_{N}}{\hat{\sigma}^2_{E}}\Big) \\$$
+$$F=\frac{14.275}{6.752}=2.114 \\$$
+
+
+$$F_{c}=1.071\\$$
+$$ F > \ F_{c}  \\$$
+Hence reject the null hypothesis. Therefore NVDA and EA stocks variances are significantly different. We shall assume unequal variance when calculating t-value.
+
+* **3. CMSA and EA**
+
+$$H_{0}: \sigma^2_{C}=\sigma^2_{E}$$
+
+$$H_{1}: \sigma^2_{C}\neq\sigma^2_{E} \\$$
+$$\alpha=0.01 \ \  then  \ \ \frac{\alpha}{2}=0.005 \\$$
+
+$$F=\Big(\frac{\hat{\sigma}^2_{C}}{\hat{\sigma}^2_{B}}\Big)\\$$
+$$F=\frac{4.187}{6.752}=0.062 \\$$
+
+$$F_{c}=1.072$$
+
+$$F < \ F_{c} $$
+Fail to reject the null hypotheses
+This suggests that  the variances returns of the two stocks returns does not differs significantly, hence t-test will assume equal variances.
+
+$$Let \ \mu_{N} \ \ represent \ mean \ \ of \ \ NVDA \  \ stocks \ returns \\$$
+$$let \ \mu_{C} \ \ = \ \  CMCSA  \ average \ \ returns\\$$
+$$let  \ \mu_{E} \ = \ \ EA \ average \ returns \\$$
+
+Perform t-test for the three pairs:
+
+* **i) NVDA and CMCSA**
+
+$$H_{0}: \mu_{N}=\mu_{C} \\$$
+
+$$H_{1}: \mu_{N}\neq\mu_{C} \\$$
+Consider that it's a two tailed t-test:
+$$\alpha=0.01 \ then \ \frac{\alpha}{2}=0.005 \\$$
+
+$$t=\frac{\hat{\mu}_{N}-\hat{\mu}_{C}}{\sqrt{\Big(\frac{\hat{\sigma}^2_{N}}{N_{N}}+\frac{\hat{\sigma}^2_{C}}{N_{C}})}} \\$$
+computing using R:
+```{r}
+NVDA_CMCS <- t.test(nvda_ret$per_returns,cmcsa_ret$per_returns,
+                   alternative="two.sided",var.equal=F)
+NVDA_CMCSA <- data.frame(NVDA_CMCS$statistic,NVDA_CMCS$p.value,NVDA_CMCS$parameter)
+names(NVDA_CMCSA)<- c("t","p-value","df")
+NVDA_CMCSA
+```
+
+$$t=1.2408\\$$
+$$t_{c}=t_{df}=t_{8698.91} \\$$
+Computing t critical using R:
+```{r}
+qt(p=.005, df=8698.91, lower.tail=FALSE)
+```
+
+$$t_{c}=2.5764\\$$
+$$|t| \ < \ |t_{c}| \\$$
+
+In this case, fail to reject the null hypotheses and conclude that the average returns
+for NVDA and CMCSA are not significantly different.
+
+* **ii) NVDA and EA**
+
+$$H_{0}: \mu_{N}=\mu_{E} \\ $$
+$$H_{1}; \mu_N\neq\mu_{E} \\$$
+$$\alpha=0.01 \  then \ \frac{\alpha}{2}=0.005 \\$$
+
+$$t=\frac{\hat{\mu}_{N}-\hat{\mu}_{E}}{\sqrt{\Big(\frac{\hat{\sigma}^2_{N}}{N_{N}}+\frac{\hat{\sigma}^2_{E}}{N_{E}})}}\\$$
+```{r}
+NVDA_E <-t.test(nvda_ret$per_returns,ea_ret$per_returns,alternative="two.sided",var.equal=F)
+NVDA_EA <- data.frame(NVDA_E$statistic,NVDA_E$p.value,NVDA_E$parameter)
+names(NVDA_EA)<- c("t","p-value","df")
+NVDA_EA
+```
+$$t=1.0378\\$$
+
+$$t_{c}=t_{df}=t_{7455.11} \\$$
+```{r}
+qt(p=.005, df=10014.05, lower.tail=FALSE)
+```
+$$t_{c}= 2.5763 \\$$
+$$|t| \ < \ |t_{c}| \\$$
+
+Fail to reject the null hypothesis and conclude that there is no significant difference
+between the average returns of NVDA and EA stocks.
+
+* **iii) CMCSA and EA**
+$$H_{0}: \mu_{H}=\mu_{N} \\ $$
+$$H_{1}; \mu_{H}\neq\mu_{N} \\$$
+$$\alpha=0.01 \  then \ \frac{\alpha}{2}=0.005 \\$$
+
+$$t=\frac{\hat{\mu}_{C}-\hat{\mu}_{E}}{\sqrt{\Big(\frac{\hat{\sigma}^2_{C}}{N_{C}}+\frac{\hat{\sigma}^2_{E}}{N_{E}})}}\\$$
+Computing using R:
+```{r}
+CMCSA_E <-t.test(cmcsa_ret$per_returns,ea_ret$per_returns,alternative="two.sided",var.equal=T,)
+CMCSA_EA <- data.frame(CMCSA_E$statistic,CMCSA_E$p.value,CMCSA_E$parameter)
+names(CMCSA_EA)<- c("t","p-value","df")
+CMCSA_EA
+```
+
+$$t=-0.1732\\$$
+$$t_{c}=t_{df}=t_{11296} \\$$
+```{r}
+qt(p=.005, df=11296, lower.tail=T)
+```
+$$t_{c}=-2.5763\\$$
+$$t \ > \ t_{c} \\$$
+Reject the null hypotheses and conclude that the average returns for CMCSA and EA stocks return are significantly different.
+
+
+From the three tests of significance, the average stocks returns for CMCSA and EA are significantly different but both average returns for EA and CMSA are not significantly different from NVDA
+
+## 2.7
+
+```{r correlation analysis,fig.cap="correlation matrix"}
+corr <- data.frame(NVDA=nvda_ret$per_returns,CMCSA=cmcsa_ret$per_returns,EA=ea_ret$per_returns)
+kable(cor(corr,method="pearson"), caption = "Correlation matrix of the three returns")
+```
+
+According to the correlation matrix, the three stocks returns are not strongly correlated with each other. The correlation coefficients between NVDA and CMCSA and EA are 0.3251 and 0.3754 respectively, while CMSA and EA pair has a coefficient of 0.3030. 
+
+
+## 2.8. Testing the significance of correlations
+
+Set up the null and alternative hypothesis:
+
+$$H_{0}:\rho=0$$
+
+$$H_{1}: \rho \neq 0$$
+Consider the the following test statistic:
+
+$$t=\frac{r \sqrt{N-2}}{\sqrt{1-r^2}}$$
+
+Decision rule: If $p-value > 0$ reject the $H_{0}$
+
+```{r correlationTest, fig.cap="correlation tests"}
+cor1 <- cor.test(nvda_ret$per_returns,cmcsa_ret$per_returns,method="pearson")#test between NVDA and CMCSA stocks
+cor2 <- cor.test(nvda_ret$per_returns,ea_ret$per_returns,method="pearson")#test between NVDA and EA stocks
+cor3 <- cor.test(cmcsa_ret$per_returns,ea_ret$per_returns,method="pearson")# test between CMCSA and EA
+
+#add the outputs into a table
+cor1 <- data.frame(statistic=cor1$statistic,p_value=round(cor1$p.value,4))
+row.names(cor1)<-c("NVDA_CMCSA")
+cor2 <- data.frame(statistic=cor2$statistic,p_value=round(cor2$p.value,4))
+row.names(cor2)<-c("NVDA_EA")
+cor3<- data.frame(statistic=cor3$statistic,p_value=round(cor3$p.value,4))
+row.names(cor3)<-c("CMCSA_EA")
+cor <- rbind(cor1,cor2,cor3)
+kable(cor,caption = "Test for correlations significance")
+```
+
+Decision: Therefore p-values obtained equals to 0 which is less than $\alpha=0.05$ significance level therefore reject the null hypotheses.
+
+This indicates that the correlation between the stocks are significant.
+
+
+## 2.9 Advising an investor.
+
+Suppose that an investor has asked you to assist them in choosing **two** of these three stocks to include in their portfolio. The portfolio is defined by 
+
+$$r = w_1r_1 + w_2r_2$$
+
+Where $r_1$ and $r_2$ represent the returns from the first and second stock, respectively, and $w_1$ and $w_2$ represent the proportion of the investment placed in each stock. The entire investment is allocated between the two stocks, so $w_1+w_2=1$.
+
+
+The investor favors the combination of stocks that provides the highest return, but dislikes risk. Thus the investor's happiness is a function of the portfolio, $r$:
+
+$$h(r) = \mathbb E(r) - \mathbb Var(r)$$
+
+Where $\mathbb E(r)$is the expected return of the portfolio, and $\mathbb Var(r)$ is the variance of the portfolio.^[Note that $\mathbb E(r) = w_1 E(r_1) + w_2 \mathbb E(r_2)$, and $\mathbb Var(r) = w_1^2\mathbb Var(r_1) + w_2^2 \mathbb Var(r_2) + 2w_1w_2 \mathbb Cov (r_1,r_2)$]
+
+
+FIRST of all, find the covariance matrix of returns
+
+```{r}
+Nvda <- NVDA_RT$per_returns
+Cmcsa <- CMCSA_RT$per_returns
+Ea <- EA_RT$per_returns
+pfol <- data.frame(Nvda, Cmcsa, Ea)
+colnames(pfol) <- c("NVDA", "CMCSA", "EA")
+rownames(pfol) <- NULL
+kable(cov(pfol), caption = "Covariance Matrix of Returns")
+```
+
+
+Then calculate the optimum weights as follows:
+$$h(r) = \mathbb E(r) - \mathbb Var(r)$$
+
+$$E(r) = E(w_1r_1 + w_2r_2)=w_1E(r_1) +w_2E(r_2)$$
+
+$$Var(r)=Var(w_1r_1 + w_2r_2) = w_1Var(r_1)+w_2Var(r_2)+2w_1w_2COV(r_1,r_2)$$
+
+$$Test \ For \ NVDA \ and \ CMCSA$$
+
+$$E(r)=(0.0913)w_1+(0.0204)w_2$$
+
+$$Var(r)=14.2747w_1 + 4.1922w_2 + 2(2.519)w_1w_2$$
+
+$$w_1+w_2=1$$
+
+$$w_2=1-w_1\\$$
+
+$$E(r)=0.0913w_1+0.0204(1 - w_1)\\$$
+
+$$=0.071w_1 + 0.0204$$
+$$Var(r)=14.2747w_1 + 4.1922(1-w_1)+ 2(2.519)w_1(1-w_1)$$
+$$=14.2747w_1 + 4.1922 - 4.1922w_1 + 5.038w_1 - 5.038w_1^2\\$$
+$$= 4.1922 + 15.1207w_1 - 5.038w_1^2$$
+$$h(r) = 0.071w_1 + 0.0204 - (4.1922 + 15.1207w_1 - 5.038w_1^2) \\$$
+$$= 0.01w_1 + 0.047 - 1.7 - 3.92w_1 + 1.82w_1^2\\$$
+$$= 5.038w_1^2 - 15.0497w_1 - 4.1718$$
+$$first \ order \ derivative \ = \frac{dh(r)}{dw_1} = 10.076w_1 - 15.0497\\$$
+$$for \ optimum \ weight, \ 10.076w_1 - 14.0436=0$$
+$$therefore, \ w_1 = 1.494, \ and \ w_2 = 1 - w_1 = -0.494\\$$
+$$second \ order \ derivative \ = \frac{dh(r)^2}{d^2w_1} = 10.054\\$$
+$$\frac{dh(r)^2}{d^2w_1}>0, opt \ weight \ is \ minimum.\\$$
+$$  Hence \ the \ expected \ return \ for \ portfolio \ NVDA   \ and  \ CMCSA \ is\\$$
+$$E(r) = (0.0913)(1.494)+(0.0204)(-0.494) = 0.1263$$
+$$Var(r)=14.2747(1.4044) + 4.1871(-0.4044) + 2(1.4044)(-0.4044)(2.5135)=7.1795$$
+$$h(r) = 0.1211 - 7.1795 = -7.0584$$
+
+
+$$TEST \ FOR \ NVDA \ and \ EA$$
+$$E(r)=(0.0924)w_1+(0.0291)w_2$$
+
+$$E(r)=(0.0924)w_1+(0.0291)-0.0291w_1$$
+
+
+$$Var(r)=14.2747w_1 + 6.7517w_2 + 2(3.6856)w_1w_2$$
+$$w_1+w_2=1$$
+$$w_2=1-w_1$$
+$$E(r)=0.0924w_1+0.0291(1 - w_1)$$
+$$=0.0924w_1 + 0.0291 - 0.0291w_1$$
+$$=0.0633w_1 + 0.0291$$
+$$Var(r)=14.2747w_1 + 6.7517(1-w_1) + 2w_1(3.6856)(1-w_1)$$
+
+$$=14.2747w_1 + 6.7517-6.7517w_1 + 7.3712w_1-7.3712w_1^2)$$
+$$=7.3712w_1^2 + 14.8942w_1-6.7517$$
+$$h(r) = 0.0633w_1 + 0.0291 - (7.3712w_1^2 + 14.8942w_1-6.7517)$$
+$$      = 6.7808 - 14.8309w_1-7.3712w_1^2\\$$
+
+$$first \ order \ derivative \ = \frac{dh(r)}{dw_1} = -14.7424w_1-14.8309\\$$
+$$  for \ optimum \ weight, \  -14.7424w_1-14.8309 = 0\\$$
+$$  therefore, \ w_1 = -1.006, \ and \ w_2 = 1 - w_1 = 2.006\\$$
+$$second \ order \ derivative \ = \frac{dh(r)^2}{d^2w_1} = -14.7424\\$$
+$$  \frac{dh(r)^2}{d^2w_1}<0, opt \ weight \ is \ maximum.\\$$
+$$ Hence \ the \ expected \ return \ for \ portfolio \ NVDA  \ and  \ EA \ is\\$$
+$$SUBSTITUTE \ w_1 \ and \ w_2 \ to \ E(r), \ Var(r),  \ and \ h(r)\\$$
+$$ E(r) = (0.0924)(-1.006)+(0.0291)(2.006) = -0.0346$$
+
+
+$$ Var(r) = 14.2747(-1.006) + 6.7517(2.006) + 2(3.6856)(-1.006)(2.006)=-15.69$$
+$$h(r) = -0.0346 + 15.69 = 15.66\\$$
+
+
+$$TEST \ FOR \ CMCSA \ and \ EA \\$$
+$$E(r)=(0.0214)w_1 + (0.0291)w_2\\$$
+$$Var(r)=4.1871w_1 + 6.7517w_2 + 2(1.6111)w_1w_2\\$$
+$$w_1+w_2=1\\$$
+$$w_2=1-w_1\\$$
+$$E(r)=(0.0214)w_1 + (0.0291)(1 - w_1)\\$$
+$$=0.0291 - 0.0077w_1$$
+
+$$Var(r)=4.1871w_1 + 6.7517(1-w_1) + 2w_1(1.6111)(1-w_1)$$
+
+$$=0.6576 + 6.7517w_1 - 3.222w_1^2$$
+
+$$h(r) = 0.0291 - 0.0077w_1 - (0.6576 + 6.7517w_1 - 3.222w_1^2)$$
+
+$$= 3.222w_1^2 - 6.744w_1 - 0.6285$$
+
+$$first \ order \ derivative \ = \frac{dh(r)}{dw_1} = 6.444w_1 - 6.744$$
+
+$$for \ optimum \ weight, \ 6.444w_1 - 6.744 = 0$$
+$$  therefore, \ w_1 = 1.047, \ and \ w_2 = 1 - w_1 = -0.0466$$
+$$second \ order \ derivative \ = \frac{dh(r)^2}{d^2w_1} = 6.444\\$$
+$$  \frac{dh(r)^2}{d^2w_1}>0, opt \ weight \ is \ minimum.\\$$
+$$Therefore \\$$
+$$E(r)= 0.0214(1.047) + (0.0291)(-0.0466)=0.02105$$
+$$Var(r)=4.1871(1.047) + 6.7517(-0.0466) + 2(1.6111)(1.047)(-0.0466)=3.912$$
+$$h(r) = 0.02105 - 3.912= -3.8909$$
+
+```{r optimalPortfolio}
+
+# You can use this section to create a table of your results.
+optimal_pfolio <- matrix(c(1.494,-0.494,0.1263,7.1796,-7.0584,-1.006,2.006,-0.0346,-15.69,15.66,1.047,-0.0466,0.0211,3.912,-3.912),
+               ncol = 5,
+               byrow = TRUE)
+colnames(optimal_pfolio) <- c("weight_1", "weight_2", "E(r)", "Var(r)", "h(r)")
+rownames(optimal_pfolio) <- c("NVDA and CMCSA", "NVDA and EA", "CMCSA and EA")
+optimal_pfolio <- as.table(optimal_pfolio)
+kable(optimal_pfolio,caption = "Optimum portfolio table")
+```
+
+According the expected returns, A combination of NVDA and CMCSA generates the biggest returns with a 0.1263 coefficient. This implies that an investor has a higher probability(12.63%) of generating a profit. Since the investor is interested in a strategy with less uncertainty, CMCSA could provide a better option since it has the lowest variations in returns, hence more stable portfolio. However, the weights of the the two stocks (CMCSA and EA) suggests that the investor needs to consider investing 4.66% in EA and 95.34% in CMCSA. 
+
+
+## 2.10. The impact of financial events on returns (6 points)
+
+```{r regression,fig.cap="regression models"}
+extract <- function(stocks,smb){
+stoc <- subset(stocks,symbol==smb)
+lehman <- stoc[stoc$date=="2008-09-15",] # Lehman bankruptcy
+pandemic <- stoc[stoc$date=="2020-03-11",]# COVID pandemic
+bankrpcy1 <- stoc[stoc$date!="2008-09-15",]#omit the bankruptcy date
+bankrpcy2 <- stoc[stoc$date!="2020-03-11",]#omit the pandemic date
+BAU <- rbind(bankrpcy1,bankrpcy2) #joining the dataframes
+#create new column with three factors
+BAU$event <- "BAU" 
+lehman$event="lehman"
+pandemic$event <- "pandemic"
+events <- rbind(lehman,pandemic,BAU) #merge the three dataframes
+events$event <- factor(events$event) #column to a factor
+events <- na.omit(events)#drop the na columns
+return (events)
+}
+
+#call the function to extract and create the factor column
+NVDA_EVENTS <- extract(stocks,"NVDA") 
+CMCSA_EVENTS <- extract(stocks,"CMCSA")
+EA_EVENTS <- extract(stocks,"EA")
+#linear regression model for the three stocks
+model_nvda <- lm(per_returns~event,data=NVDA_EVENTS)
+model_cmcsa <- lm(per_returns~event,dat=CMCSA_EVENTS)
+model_ea <- lm(per_returns~event,data=EA_EVENTS)
+
+# NVDA events
+summary(model_nvda)$coefficients
+```
+
+
+```{r}
+# CMCSA events
+summary(model_cmcsa)$coefficients
+```
+
+```{r}
+# EA events
+summary(model_ea)$coefficients
+```
+
+(a) According to the regression models, all the three stocks never exhibited positive returns over time since R-squared from the three models are not significantly different from zero.  
+
+(b) Both pandemic and bankruptcy events have negative impacts on the three stocks. In all cases, Lehman Brothers bankruptcy affected the stocks more negatively as the "eventlehman" coefficients are less than "eventpandemic" coefficients. 
+Lehman bankruptcy had significantly negative impacts on both NVDA($p-value=0.0146$) and CMCSA($p-value=0.0499$) at 5% significance level.
