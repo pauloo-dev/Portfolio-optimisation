@@ -121,7 +121,7 @@ hists<-grid.arrange(hist1,hist2,hist3,ncol=2)
 hists
 ```
 
-The histograms for NVDA, CMCSA, and EA returns reveal that the distributions deviate from normality, exhibiting leptokurtic behavior — characterized by a sharp peak and heavy tails. This is supported by the high kurtosis values observed for all three stocks. While the majority of returns cluster around zero, indicating limited daily price movements, the presence of fat tails suggests a higher likelihood of extreme returns compared to a normal distribution.
+The histogram plots of daily percentage returns for NVDA, CMCSA, and EA show distributions that are approximately symmetric and bell-shaped, suggesting normality in returns. However, the sharp central peaks and heavy tails indicate that these distributions are leptokurtic — more peaked and fat-tailed than the standard normal distribution. This is consistent with the high kurtosis values observed in the summary statistics. The returns mostly cluster around zero with minimal skew, reinforcing the assumption of approximate normality but with greater tail risk.
 
 ## 2.4
 
