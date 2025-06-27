@@ -50,32 +50,30 @@ Key insights:
 
 Histograms show that the return distributions for NVDA, CMCSA, and EA are approximately symmetric and bell-shaped, suggesting they are close to normal. However, their sharp peaks and heavy tails indicate leptokurtosis, meaning:
 
-Returns cluster tightly around the mean
-
-Occasional large jumps (both positive and negative) occur
-
-Higher likelihood of extreme events compared to normal distributions
+- Returns cluster tightly around the mean
+- Occasional large jumps (both positive and negative) occur
+- Higher likelihood of extreme events compared to normal distributions
 
 📊 *[See Histograms]*  
 ![Return Histograms](plots/returns_histograms.png)
 
 
 
-4️⃣ Statistical Profile (Summary)
+## 4️⃣ Statistical Profile (Summary)
 Below is a condensed summary of key return metrics:
 
-Stock	Mean Return	Std Dev	Skewness	Kurtosis	Risk Level	Profile
-NVDA	0.0916%	3.78%	-0.254	13.4	High	High risk, high return
-CMCSA	0.0208%	2.05%	-0.0116	8.27	Low	Low risk, low return
-EA	0.0289%	2.60%	0.125	6.40	Moderate	Balanced
+| Stock | Mean Return | Std Dev | Skewness | Kurtosis | Risk Level | Profile                |
+| ----- | ----------- | ------- | -------- | -------- | ---------- | ---------------------- |
+| NVDA  | 0.0916%     | 3.78%   | -0.254   | 13.4     | High       | High risk, high return |
+| CMCSA | 0.0208%     | 2.05%   | -0.0116  | 8.27     | Low        | Low risk, low return   |
+| EA    | 0.0289%     | 2.60%   | 0.125    | 6.40     | Moderate   | Balanced               |
+
 
 Interpretation:
 
-📈 NVDA: Offers the highest potential return, but comes with the most volatility and extreme tail events.
-
-🛡️ CMCSA: Least risky; returns are stable, but modest.
-
-⚖️ EA: Sits in between — a compromise between risk and reward.
+- 📈 NVDA: Offers the highest potential return, but comes with the most volatility and extreme tail events.
+- 🛡️ CMCSA: Least risky; returns are stable, but modest.
+- ⚖️ EA: Sits in between — a compromise between risk and reward.
 
 ---
 
