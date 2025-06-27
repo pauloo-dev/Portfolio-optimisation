@@ -3,6 +3,7 @@
 **Author:** Paul Muriithi  
 **Date:** 2022-06-18  
 **Tools Used:** R (tidyquant, ggplot2, broom, e1071)
+
 **Data Source:** [Tiingo API](https://www.tiingo.com/)
 
 ---
